@@ -1,0 +1,204 @@
+# Talaat Basouny
+# !/usr/bin/env python3
+import csv
+import sys
+import getpass
+import re
+import os
+
+
+def readFile(file):
+    with open(file, 'r') as f:
+        data = [row for row in csv.reader(f.read().splitlines())]
+
+        for i in data:
+
+            fullName = i[0]
+            splitName = [x.strip() for x in fullName.split(',')]
+            firstAndMiddle = [c.strip() for c in splitName[1].split(' ')]
+            first = firstAndMiddle[0].lower()
+            last = splitName[0].lower()
+
+            """
+                Capitalize only the first letter of the names
+            """
+            newFirst = first[0]
+            newFirst = newFirst.upper()
+            firstName = newFirst + first[1:]
+
+            newLast = last[0]
+            newLast = newLast.upper()
+            lastName = newLast + last[1:]
+
+            if ((len(firstAndMiddle)) > 1):
+                middle = firstAndMiddle[1].lower()
+                newMiddle = middle[0]
+                newMiddle = newMiddle.upper()
+                middleName = newMiddle + middle[1:]
+            else:
+                middleName = ""
+
+            office = i[1]
+            Group = i[2]
+            department = i[3]
+            Phone = i[4]
+
+            """
+                generate unique user id's for each user
+                the script will give each member a user id that consists of:
+                    The first letter of their first name
+                    Their last name
+                    Their office extension number
+                This uid prevents problems occuring with multiple users of the same name
+            """
+            uid = firstName[0].lower() + lastName.lower() + Group
+
+            """
+                All users should use the default shell
+                    /bin/bash
+                
+            """
+            if department == "ceo":
+                shell = "/bin/csh"
+            else:
+                shell = "/bin/bash"
+
+            print("Adding user: \n" + firstName + " " + middleName + " " + lastName + " | " + office
+                  + " | " + Group + " | " + department + " | " + uid + " | " + shell + " | " + Phone + " | \n")
+
+            os.system("useradd " + uid + " -c " + "'" + firstName + " " + middleName + " " + lastName + "'" + " -g "
+                      + department + Phone + " -d /home/" + department + "/" + uid + " -s " + shell)
+
+
+def root_check():
+    """Exit if login name not root."""
+
+    if not getpass.getuser() == 'root':
+        print("ERROR: THIS PROGRAM REQUIRES ROOT PRIVILEGES. EXITING.")
+        sys.exit()
+
+
+def username_prompt():
+    """Prompt user. Check that input matches, and cotains at least one allowable character."""
+
+    print("Valid usernames contain only the characters 'a-z', e.g. trex")
+
+    while True:
+        username = str(input("Enter username to add: "))
+        confirm_name = str(input("To confirm, re-enter username: "))
+
+        if username != confirm_name or not re.match("^[a-z]+$", username):
+            print("SORRY, THAT'S NOT ALLOWED. TRY AGAIN.")
+            continue
+
+        else:
+            print("OK, checking if user: %s exists." % (username))
+            return username
+
+
+def username_check():
+    """Check if username exists."""
+
+    while True:
+        check = username_prompt()
+
+        try:
+            pwd.getpwnam(check)
+            print("USER %s EXISTS. TRY A DIFFERENT USERNAME." % (check))
+
+        except KeyError:
+            print("User %s does not exist. Continuing..." % (check))
+            return check
+
+
+def comment_prompt():
+    """Prompt for input. Check that input matches and contains allowable characters. No input is allowable."""
+
+    print(
+        "Valid comments contain only the characters 'a-z' and ',', e.g. rex,tyrannosaurus. This field can be left blank.")
+
+    while True:
+        comment = str(input("Enter user comments, or press 'return' twice to leave blank: "))
+        confirm_comment = str(input("To confirm, re-enter comments: "))
+
+        if comment != confirm_comment or not re.match("^[a-z,]*$", comment):
+            print("SORRY, THAT'S NOT ALLOWED. TRY AGAIN.")
+            continue
+
+        else:
+            print("Comments match. Continuing...")
+            return comment
+
+
+def passwd_prompt():
+    """Prompt user for input. Check that input matches and meets password complexity requirements."""
+
+    print(
+        "Password MUST contain AT LEAST: one lower-case letter, one number, one symbol, and be a MINIMUM of 8 characters in length, e.g. 4.lizard")
+
+    while True:
+
+        passy = getpass.getpass(prompt="Enter password for user: ")
+        confirm_passy = getpass.getpass(prompt="To confirm, re-enter password: ")
+
+        # check for the following conditions:
+        # user input matches
+        # length of input is at least 8 characters
+        # input contains at least 1 number
+        # input contains at least 1 letter
+        # input contains at least 1 symbol
+
+        if passy != confirm_passy \
+                or len(passy) < 8 \
+                or not re.search('\d', passy) \
+                or not re.search(r"[a-z]", passy) \
+                or not re.search(r"[ !#$%&'()*+,-./[\\\]^_`{|}~" + r'"]', passy):
+
+            print("SORRY, THAT'S NOT ALLOWED. TRY AGAIN.")
+            continue
+
+        else:
+            print("Password meets complexity requirement. Continuing...")
+            return passy
+
+
+def add_usr():
+    """Call the useradd command to create an account with given parameters."""
+
+    name = username_check()
+    note = comment_prompt()
+    code = passwd_prompt()
+
+    print("Adding user: %s" % (name))
+
+    # create user
+    # create group with same name as user, adding user to group
+    # comment (lastname, firstname)
+    # create home directory
+    # login shell
+    # password (encrypted via openssl)
+
+    os.system("useradd --create-home \
+    --user-group \
+    --comment " + note + " \
+    --home /home/" + name + " \
+    --shell /bin/bash \
+    --password $(printf %s " + code + " |openssl passwd -1 -stdin) " + name + "")
+
+    print("Done.")
+
+
+def addME():
+    """Add user to Linux OS."""
+
+    root_check()
+    add_usr()
+
+
+def main():
+    file = input("Enter a filename: ")
+    readFile(file)
+    addME()
+
+
+main()
